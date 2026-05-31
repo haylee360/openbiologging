@@ -1,0 +1,164 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# openbiologging <img src="man/figures/logo.png" align="right" height="139" alt="" />
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+**openbiologging** provides data from a systematic literature review
+assessing open data practices in biologging research. Biologging — the
+use of miniaturized animal-attached sensors to record movement, behavior,
+physiology, and environment — has grown rapidly as a field, yet how
+openly researchers share the resulting data remains poorly characterized.
+
+This package contains two datasets:
+
+- **`biologging`** — 4,799 papers scored by at least two reviewers on
+  manuscript type, biologging context, sensor categories, focal species,
+  and data availability.
+- **`taxa`** — taxonomic records (genus, species, habitat) for all
+  species tagged in multi-species studies.
+
+The underlying review queried Web of Science Core Collection on
+2023-08-21 across twelve ecological and biological subject categories.
+Full methods are available at
+<https://flukeandfeather.github.io/openbiologging/methods.html>.
+
+## Installation
+
+You can install the development version of openbiologging from
+[GitHub](https://github.com/haylee360/openbiologging) with:
+
+``` r
+# install.packages("pak")
+pak::pak("haylee360/openbiologging")
+```
+
+## Datasets
+
+### `biologging`
+
+One row per reviewed paper. Key columns:
+
+| Column | Description |
+|---|---|
+| `manuscript_type` | S (Study), R (Review), M (Method), P (Perspective), D (Data paper) |
+| `novel_biologging` | Y/N — were new biologging data collected? |
+| `biologging_context` | W (Wild), C (Captive), D (Domesticated), or combinations |
+| `external_data` | Y/N — did the paper rely on externally shared non-biologging data? |
+| `device_cat` | L (Location), I (Intrinsic), E (Environment), or combinations |
+| `habitat` | A (Aquatic), M (Marine), T (Terrestrial), or combinations |
+| `biologging_availability` | Y/N — does the paper have a biologging-specific data availability statement? |
+| `genus` / `species` | Focal taxon |
+
+```{r biologging-glimpse}
+library(openbiologging)
+library(dplyr)
+
+glimpse(biologging)
+```
+
+### `taxa`
+
+Taxonomic records for all species in multi-species studies
+(`more_species == "Y"` in `biologging`). Join to `biologging` via the
+`id` column.
+
+```{r taxa-glimpse}
+glimpse(taxa)
+```
+
+## Examples
+
+### How open is biologging data sharing?
+
+```{r avail-summary}
+library(dplyr)
+
+biologging |>
+  filter(!is.na(biologging_availability)) |>
+  count(biologging_availability) |>
+  mutate(pct = round(n / sum(n) * 100, 1))
+```
+
+### Habitat representation over time
+
+Papers are distributed unevenly across aquatic, marine, and terrestrial
+systems. This chart shows the count of single-habitat studies per year.
+
+```{r habitat-chart, warning = FALSE, message = FALSE}
+library(ggplot2)
+
+hab_data <- biologging |>
+  filter(!is.na(year), !is.na(habitat), habitat %in% c("A", "M", "T")) |>
+  count(year, habitat)
+
+ggplot(
+  hab_data,
+  aes(
+    x = factor(year),
+    y = n,
+    fill = habitat
+  )
+) +
+  geom_col() +
+  scale_y_continuous(name = "Count", breaks = c(0, 150, 300, 450, 600)) +
+  scale_fill_manual(
+    values = c("A" = "#1b9e77", "M" = "#d95f02", "T" = "#7570b3"),
+    labels = c("A" = "Aquatic", "M" = "Marine", "T" = "Terrestrial"),
+    name = "Habitat"
+  ) +
+  labs(x = "Year", y = "Count") +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(margin = margin(10, 10, 10, 10)),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.box.margin = margin(t = 20)
+  )
+```
+
+### Sensor categories used
+
+```{r device-summary, warning = FALSE, message = FALSE}
+biologging |>
+  filter(!is.na(device_cat)) |>
+  count(device_cat, sort = TRUE) |>
+  slice_head(n = 8) |>
+  ggplot(aes(x = reorder(device_cat, n), y = n)) +
+  geom_col(fill = "#7570b3") +
+  coord_flip() +
+  labs(
+    x = "Sensor category",
+    y = "Number of papers",
+    title = "Most common sensor combinations"
+  ) +
+  theme_minimal()
+```
+
+## Citation
+
+If you use this dataset, please cite:
+
+```{r citation, echo = FALSE, comment = ""}
+citation("openbiologging")
+```
+
+## Methods
+
+Full review methods, including the Web of Science query, inclusion
+criteria, and reviewer rubric, are available at:
+<https://flukeandfeather.github.io/openbiologging/methods.html>

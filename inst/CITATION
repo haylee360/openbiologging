@@ -1,0 +1,10 @@
+bibentry(
+  bibtype = "Manual",
+  key = "dataset_key",
+  title = "Open Biologging Data",
+  author = c(person("Max", "Czapanskiy"),
+  person("Haylee", "Oyler")),
+  year = "2026",
+  note = "R package version 0.1.0",
+  url = "https://github.com/haylee360/openbiologging"
+  )
