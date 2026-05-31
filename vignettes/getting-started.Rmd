@@ -1,8 +1,8 @@
 ---
-title: "getting-started"
+title: "Getting Started with openbiologging"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{getting-started}
+  %\VignetteIndexEntry{Getting Started with openbiologging}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -10,10 +10,225 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4,
+  warning = FALSE,
+  message = FALSE
 )
 ```
 
+## Overview
+
+The `openbiologging` package provides data from a systematic literature review
+of open data practices in biologging research. Biologging uses miniaturized
+animal-attached sensors to record movement, behavior, physiology, and
+environment. This review assessed how openly researchers share the data
+collected from these devices.
+
+The package contains two datasets:
+
+- **`biologging`** — one row per reviewed paper, covering 4,799 publications
+  identified from Web of Science Core Collection (queried 2023-08-21)
+- **`taxa`** — one row per species per study, for studies where more than one
+  species was tagged
+
 ```{r setup}
 library(openbiologging)
+library(dplyr)
+library(ggplot2)
 ```
+
+## The `biologging` dataset
+
+```{r biologging-overview}
+glimpse(biologging)
+```
+
+Each row is a paper. The key columns fall into a few groups:
+
+**What kind of paper is it?**
+
+- `manuscript_type` — Study (`S`), Review (`R`), Method (`M`), Perspective
+  (`P`), or Data paper (`D`)
+- `novel_biologging` — `Y` if the paper collected new biologging data; `N` if
+  it reanalysed existing data
+
+**What was tracked, and where?**
+
+- `biologging_context` — Wild (`W`), Captive (`C`), Domesticated (`D`), or
+  combinations
+- `habitat` — Aquatic (`A`), Marine (`M`), Terrestrial (`T`), or combinations
+- `device_cat` — sensor categories used: Location (`L`), Intrinsic (`I`),
+  Environment (`E`), or combinations
+- `genus` / `species` — focal taxon (primary species for multi-species studies)
+
+**Was the data shared?**
+
+- `biologging_availability` — `Y` if the paper includes a data availability
+  statement specifically addressing the biologging data; `N` otherwise
+- `external_data` — `Y` if the paper incorporated non-biologging data from
+  external sources (e.g. satellite imagery, phylogenies)
+
+## The `taxa` dataset
+
+```{r taxa-overview}
+glimpse(taxa)
+```
+
+`taxa` covers multi-species studies — papers where `more_species == "Y"` in
+`biologging`. Join the two datasets on `id` to get full taxonomic information
+alongside the review scores:
+
+```{r join-example, warning=FALSE, message=FALSE}
+taxa |>
+  left_join(biologging, by = c("id", "genus", "species")) |>
+  select(id, manuscript_type, biologging_context, device_cat, habitat, biologging_availability, genus, species, title, authors, doi) |>
+  slice_head(n = 10)
+```
+
+## Exploring the data
+
+### How open is biologging data sharing?
+
+Do biologging papers include a data availability statement for their data?
+
+```{r availability, warning=FALSE, message=FALSE}
+biologging |>
+  filter(!is.na(biologging_availability)) |>
+  count(biologging_availability) |>
+  mutate(
+    label = if_else(biologging_availability == "Y", "Available", "Not available"),
+    pct   = round(n / sum(n) * 100, 1)
+  )
+```
+
+### Manuscript types
+
+Most papers in the review are empirical studies:
+
+```{r manuscript-type, warning=FALSE, message=FALSE}
+biologging |>
+  count(manuscript_type, sort = TRUE) |>
+  mutate(
+    type_label = case_match(
+      manuscript_type,
+      "S" ~ "Study",
+      "R" ~ "Review",
+      "M" ~ "Method",
+      "P" ~ "Perspective",
+      "D" ~ "Data paper"
+    ),
+    pct = round(n / sum(n) * 100, 1)
+  )
+```
+
+### Habitat representation over time
+
+Single-habitat papers (A, M, or T only) broken down by year:
+
+```{r habitat-over-time, warning=FALSE, message=FALSE}
+biologging |>
+  filter(!is.na(year), !is.na(habitat), habitat %in% c("A", "M", "T")) |>
+  count(year, habitat) |>
+  ggplot(aes(x = factor(year), y = n, fill = habitat)) +
+  geom_col() +
+  scale_y_continuous(breaks = c(0, 150, 300, 450, 600)) +
+  scale_fill_manual(
+    values = c("A" = "#1b9e77", "M" = "#d95f02", "T" = "#7570b3"),
+    labels = c("A" = "Aquatic", "M" = "Marine", "T" = "Terrestrial"),
+    name   = "Habitat"
+  ) +
+  labs(y = "Number of papers") +
+  theme_minimal() +
+  theme(
+    axis.title.x  = element_blank(),
+    axis.title.y  = element_text(margin = margin(10, 10, 10, 10)),
+    axis.text.x   = element_text(angle = 45, hjust = 1),
+    legend.box.margin = margin(t = 20)
+  )
+```
+
+### Sensor categories
+
+The `device_cat` column uses single letters for sensor types and combines them
+for multi-sensor tags. The most common combinations:
+
+```{r device-cat, warning=FALSE, message=FALSE}
+biologging |>
+  filter(!is.na(device_cat)) |>
+  count(device_cat, sort = TRUE) |>
+  slice_head(n = 8) |>
+  mutate(
+    device_label = case_match(
+      device_cat,
+      "L"   ~ "Location only",
+      "LI"  ~ "Location + Intrinsic",
+      "LIE" ~ "Location + Intrinsic + Environment",
+      "LE"  ~ "Location + Environment",
+      "I"   ~ "Intrinsic only",
+      "IE"  ~ "Intrinsic + Environment",
+      "E"   ~ "Environment only",
+      "LI"  ~ "Location + Intrinsic",
+      .default = device_cat
+    )
+  ) |>
+  ggplot(aes(x = reorder(device_label, n), y = n)) +
+  geom_col(fill = "#7570b3") +
+  coord_flip() +
+  labs(x = NULL, y = "Number of papers") +
+  theme_minimal()
+```
+
+### Biologging context
+
+Were animals tracked in wild, captive, or domesticated settings?
+
+```{r context, warning=FALSE, message=FALSE}
+biologging |>
+  filter(novel_biologging == "TRUE", !is.na(biologging_context)) |>
+  count(biologging_context, sort = TRUE) |>
+  mutate(
+    context_label = case_match(
+      biologging_context,
+      "W"  ~ "Wild",
+      "C"  ~ "Captive",
+      "D"  ~ "Domesticated",
+      "WC" ~ "Wild + Captive",
+      "WD" ~ "Wild + Domesticated",
+      "CD" ~ "Captive + Domesticated",
+      .default = biologging_context
+    ),
+    pct = round(n / sum(n) * 100, 1)
+  ) |>
+  select(context_label, n, pct)
+```
+
+### Most studied taxa
+
+Which genera appear most frequently across all studies? This uses both
+`biologging` (single-species studies) and `taxa` (multi-species studies):
+
+```{r top-taxa, warning=FALSE, message=FALSE}
+all_taxa <- bind_rows(
+  biologging |> select(genus, species),
+  taxa       |> select(genus, species)
+)
+
+all_taxa |>
+  filter(!is.na(genus)) |>
+  count(genus, sort = TRUE) |>
+  slice_head(n = 15) |>
+  ggplot(aes(x = reorder(genus, n), y = n)) +
+  geom_col(fill = "#d95f02") +
+  coord_flip() +
+  labs(x = NULL, y = "Number of studies") +
+  theme_minimal()
+```
+
+## Further reading
+
+- Full methods: <https://flukeandfeather.github.io/openbiologging/methods.html>
+- Sensor category definitions: Williams et al. (2019),
+  doi:[10.1111/1365-2656.13094](https://doi.org/10.1111/1365-2656.13094)
+- Package documentation: `?biologging`, `?taxa`

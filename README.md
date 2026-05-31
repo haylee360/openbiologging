@@ -57,14 +57,6 @@ One row per reviewed paper. Key columns:
 ``` r
 library(openbiologging)
 library(dplyr)
-#> 
-#> Attaching package: 'dplyr'
-#> The following objects are masked from 'package:stats':
-#> 
-#>     filter, lag
-#> The following objects are masked from 'package:base':
-#> 
-#>     intersect, setdiff, setequal, union
 
 glimpse(biologging)
 #> Rows: 5,769
@@ -114,27 +106,7 @@ glimpse(taxa)
 
 ## Examples
 
-### How open is biologging data sharing?
-
-``` r
-library(dplyr)
-
-biologging |>
-  filter(!is.na(biologging_availability)) |>
-  count(biologging_availability) |>
-  mutate(pct = round(n / sum(n) * 100, 1))
-#> # A tibble: 3 × 3
-#>   biologging_availability     n   pct
-#>   <chr>                   <int> <dbl>
-#> 1 N                        2797  62.5
-#> 2 U                           3   0.1
-#> 3 Y                        1672  37.4
-```
-
 ### Habitat representation over time
-
-Papers are distributed unevenly across aquatic, marine, and terrestrial
-systems. This chart shows the count of single-habitat studies per year.
 
 ``` r
 library(ggplot2)
@@ -143,14 +115,8 @@ hab_data <- biologging |>
   filter(!is.na(year), !is.na(habitat), habitat %in% c("A", "M", "T")) |>
   count(year, habitat)
 
-ggplot(
-  hab_data,
-  aes(
-    x = factor(year),
-    y = n,
-    fill = habitat
-  )
-) +
+ggplot(hab_data,aes(x = factor(year), y = n, 
+                    fill = habitat)) +
   geom_col() +
   scale_y_continuous(name = "Count", breaks = c(0, 150, 300, 450, 600)) +
   scale_fill_manual(
@@ -161,8 +127,6 @@ ggplot(
   labs(x = "Year", y = "Count") +
   theme_minimal() +
   theme(
-    axis.title.x = element_blank(),
-    axis.title.y = element_text(margin = margin(10, 10, 10, 10)),
     axis.text.x = element_text(angle = 45, hjust = 1),
     legend.box.margin = margin(t = 20)
   )
@@ -170,25 +134,63 @@ ggplot(
 
 <img src="man/figures/README-habitat-chart-1.png" alt="" width="100%" />
 
-### Sensor categories used
+### Novel data analysis
 
 ``` r
-biologging |>
-  filter(!is.na(device_cat)) |>
-  count(device_cat, sort = TRUE) |>
-  slice_head(n = 8) |>
-  ggplot(aes(x = reorder(device_cat, n), y = n)) +
-  geom_col(fill = "#7570b3") +
-  coord_flip() +
-  labs(
-    x = "Sensor category",
-    y = "Number of papers",
-    title = "Most common sensor combinations"
+# Count novel and reanalysis papers by year
+novel_year <- biologging %>%
+  group_by(year) %>%
+  count(novel_biologging) %>%
+  ungroup()
+
+ggplot(novel_year, aes(x = factor(year), y = n, fill = novel_biologging)) +
+  geom_col() +
+  scale_fill_manual(
+    values = c("TRUE" = "#619CFF", "FALSE" = "#F8766D"),
+    labels = c("TRUE" = "Novel Data", "FALSE" = "Reanalysis"),
+    name = ""
   ) +
-  theme_minimal()
+  scale_x_discrete(name = "Year") +
+  scale_y_continuous(name = "Count", breaks = c(0, 200, 400, 600)) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+  )
 ```
 
-<img src="man/figures/README-device-summary-1.png" alt="" width="100%" />
+<img src="man/figures/README-novel-chart-1.png" alt="" width="100%" />
+
+### Percent with Data Availability Statements bubble chart
+
+``` r
+# Select data availability statement data
+das_data <- biologging %>%
+  filter(!is.na(year)) %>%
+  group_by(year) %>%
+  summarize(pct = mean(biologging_availability == "Y",
+                       na.rm = TRUE),
+            n = n(),
+            .groups = "drop")
+
+# Plot DAS bubble and line chart
+ggplot(das_data,aes(x = factor(year), y = pct, 
+                    size = n, group = 1)) +
+  geom_line(linewidth = 0.7, colour = "black") +
+  geom_point(colour = "black") +
+  scale_y_continuous(
+    labels = scales::percent_format(accuracy = 1),
+    limits = c(0, 1)
+    ) +
+  scale_size_continuous(name = "# of papers", range = c(2, 8)) +
+  labs(x = "Year", y = "% with DAS") +
+  theme_minimal() +
+  theme(
+    axis.title.y = element_text(margin = margin(10, 10, 10, 10)),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+<img src="man/figures/README-das-chart-1.png" alt="" width="100%" />
 
 ## Citation
 
