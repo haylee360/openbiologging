@@ -9,6 +9,10 @@
 #' @format A data frame with one row per reviewed paper and the following
 #'   columns:
 #' \describe{
+#'    \item{id}{Character. Unique study identifier, formatted as first-author
+#'     surname concatenated with publication year (e.g. \code{"authier2013"}).
+#'     Links rows in \code{biologging} to species records in
+#'     \code{\link{taxa}}.}
 #'   \item{manuscript_type}{Character. Broad paper type. One of:
 #'     \code{"S"} (Study — new empirical research),
 #'     \code{"R"} (Review),
@@ -73,6 +77,19 @@
 #'     \code{\link{taxa}} for all species.}
 #'   \item{species}{Character. Species epithet of the focal tagged species.
 #'     When \code{more_species == "Y"}, see \code{\link{taxa}} for all species.}
+#'   \item{authors}{Character. Author list as recorded in Web of Science.}
+#'   \item{title}{Character. Paper title.}
+#'   \item{year}{Integer. Publication year.}
+#'   \item{volume}{Character. Journal volume.}
+#'   \item{issue}{Character. Journal issue.}
+#'   \item{doi}{Character. Digital Object Identifier.}
+#'   \item{doi_link}{Character. Full DOI URL (i.e. \code{doi} prefixed with
+#'     \code{https://doi.org/}).}
+#'   \item{reviewed}{Character. Indicates review completion status}
+#'   \item{assigned_to}{Character. Which
+#'     reviewer was assigned to this paper}
+#'   \item{note}{Character. Free-text field for
+#'     reviewer notes or flagged issues}
 #' }
 #'
 #' @details

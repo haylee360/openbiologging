@@ -19,14 +19,7 @@
 #'   \item{species}{Character. Species epithet of the tagged species, corrected
 #'     for typographic errors and standardised to trimmed lowercase text. See
 #'     Details for cleaning notes.}
-#'   \item{habitat}{Character. \code{⚠ FLAG} — a \code{habitat} column is
-#'     referenced in the methods documentation for the additional taxa sheet,
-#'     but its presence and coding in this dataset should be confirmed. If
-#'     present, coding follows the same scheme as \code{\link{biologging}}:
-#'     \code{"A"} (Aquatic/freshwater), \code{"M"} (Marine), \code{"T"}
-#'     (Terrestrial), or combinations thereof.}
-#' }
-#'
+#'}
 #' @details
 #' ## Relationship to \code{biologging}
 #' This dataset is a companion to \code{\link{biologging}}. It covers only
